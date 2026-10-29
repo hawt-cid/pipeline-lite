@@ -4,7 +4,7 @@ import json
 import os
 import sys
 
-from . import hooks, retro
+from . import backlog, hooks, retro
 from .store import STATUSES, TYPES, Kb, KbError, find_kb, resolve_id, today
 
 
@@ -135,6 +135,18 @@ def cmd_retro(kb, a):
     print(f"{note.id}\n{note.path}\n{status}")
 
 
+def cmd_backlog(kb, a):
+    g = backlog.gather(kb, a.project, a.all)
+    return emit(g) if a.json else print(backlog.render(g), end="")
+
+
+def cmd_idea(kb, a):
+    if a.icmd == "add":
+        print(backlog.idea_add(kb, a.text, a.project, csv(a.tags)).id)
+    else:
+        print(f"done: {backlog.idea_done(kb, a.id).id}")
+
+
 def build_parser():
     def common_opts(**kw):  # fresh actions each time: set_defaults would leak into shared ones
         c = argparse.ArgumentParser(add_help=False)
@@ -217,6 +229,19 @@ def build_parser():
     bg = r.add_mutually_exclusive_group()
     bg.add_argument("--body-file", metavar="F")
     bg.add_argument("--body", help="- for stdin")
+
+    s = add("backlog", cmd_backlog, "open tasks and ideas across registered projects, plus the inbox")
+    s.add_argument("--project", help="only this project (name, proj://name or card id)")
+    s.add_argument("--all", action="store_true", help="include done/parked tasks, done ideas and done projects")
+
+    s = add("idea", cmd_idea, "capture ideas: idea add|done")
+    isub = s.add_subparsers(dest="icmd", required=True)
+    f = isub.add_parser("add", parents=[common], help="new idea; default project = card for the cwd")
+    f.add_argument("text")
+    f.add_argument("--project")
+    f.add_argument("--tags", help="comma separated")
+    f = isub.add_parser("done", parents=[common], help="mark an idea done")
+    f.add_argument("id")
 
     s = add("hook", None, "session lifecycle hook handler (stdin = hook JSON; always exits 0)")
     s.add_argument("event", choices=hooks.EVENTS)

@@ -209,12 +209,13 @@ def main_worktree(cwd):
     return None
 
 
-def open_tasks(cwd):
-    """[(title, status, branch, handoff_text)] of open tasks in the main worktree."""
-    root = main_worktree(cwd)
+STEP_RE = re.compile(r"^###\s+(.+?)\s+·\s+`([A-Za-z-]+)`", re.M)
+
+
+def parse_tasks(root, all_=False):
+    """Tasks of `<root>/.tasks/*/TASK.md` as dicts (title, status, branch, handoff, next,
+    steps = [(name, status)]); done/parked are skipped unless all_. The one TASK.md parser."""
     res = []
-    if not root:
-        return res
     for p in sorted(Path(root).glob(".tasks/*/TASK.md")):
         try:
             text = p.read_text(encoding="utf-8", errors="replace")
@@ -222,14 +223,26 @@ def open_tasks(cwd):
             continue
         sm = re.search(r"Status \(internal\):\s*([A-Za-z-]+)", text)
         status = sm.group(1).lower() if sm else ""
-        if status in ("done", "parked"):
+        if status in ("done", "parked") and not all_:
             continue
         bm = re.search(r"Branch:\s*([^\s·(]+)", text)
         tm = re.search(r"^#\s+(.+)$", text, re.M)
         hm = re.search(r"^## Handoff[^\n]*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
-        res.append((tm.group(1).strip() if tm else p.parent.name, status or "?",
-                    bm.group(1) if bm else "", hm.group(0).strip() if hm else ""))
+        handoff = hm.group(0).strip() if hm else ""
+        nm = re.search(r"\*\*Next:\*\*\s*(.*?)(?=\n- \*\*|\Z)", handoff, re.S)
+        res.append({"title": tm.group(1).strip() if tm else p.parent.name, "status": status or "?",
+                    "branch": bm.group(1) if bm else "", "handoff": handoff,
+                    "next": one_line(nm.group(1)) if nm else "",
+                    "steps": [(m.group(1), m.group(2).lower()) for m in STEP_RE.finditer(text)]})
     return res
+
+
+def open_tasks(cwd):
+    """[(title, status, branch, handoff_text)] of open tasks in the main worktree."""
+    root = main_worktree(cwd)
+    if not root:
+        return []
+    return [(t["title"], t["status"], t["branch"], t["handoff"]) for t in parse_tasks(root)]
 
 
 # ---- events --------------------------------------------------------------------

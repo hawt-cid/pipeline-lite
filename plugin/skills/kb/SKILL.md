@@ -44,6 +44,14 @@ kb project add myapp --path ~/code/myapp --stack "python" --commands "make test"
 kb check                                             # validate; run after bulk edits
 ```
 
+## Backlog and ideas
+
+```bash
+kb backlog [--project P] [--all] [--json]   # per registered project: open tasks (next step, handoff Next), open ideas; unfiled ideas; inbox count
+kb idea add "text" [--project P] [--tags a,b]   # capture an idea (default project: card for the cwd); prints the id
+kb idea done <id>                           # mark it done
+```
+
 ## Session journal and friction
 
 Hooks track each session (start, turns, last reply) and append one entry to
