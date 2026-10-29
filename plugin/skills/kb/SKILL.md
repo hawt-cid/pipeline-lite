@@ -32,7 +32,7 @@ Write only durable, reusable knowledge: a verified fact, a decision with its rea
 how-to, a project card. Do not write session chatter, guesses, secrets or credentials.
 Search first to avoid duplicates; link related notes.
 
-Types: `note`, `project`, `idea`, `decision`, `howto`.
+Types: `note`, `project`, `idea`, `decision`, `howto` (and `retro`, written only by `kb retro record`).
 
 ```bash
 kb new howto "Rebuild the search index" --project myapp --tags search,sqlite --body "Run kb index ..."
@@ -61,6 +61,8 @@ kb journal tail --project proj-name -n 5     # recent entries, newest last
 The note attaches to the live session (newest whose cwd equals, contains or is inside the
 current dir) and lands in its journal entry; with no live session it becomes a standalone line.
 The journal is local-only like the rest of the kb: it is never pushed or sent anywhere.
+
+The user can turn the journal into instruction fixes with `/pipeline:retro` (backed by `kb retro gather|record`); do not run it unasked.
 
 ## Note format
 

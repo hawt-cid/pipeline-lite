@@ -4,7 +4,7 @@ import json
 import os
 import sys
 
-from . import hooks
+from . import hooks, retro
 from .store import STATUSES, TYPES, Kb, KbError, find_kb, resolve_id, today
 
 
@@ -118,6 +118,23 @@ def cmd_journal(kb, a):
         print(e + "\n")
 
 
+def cmd_retro(kb, a):
+    if a.rcmd == "gather":
+        g = retro.gather(kb, a.since, a.project)
+        return emit(retro.to_json(g)) if a.json else print(retro.render(g), end="")
+    if a.body == "-":
+        body = sys.stdin.read()
+    elif a.body_file:
+        try:
+            body = open(os.path.expanduser(a.body_file), encoding="utf-8").read()
+        except OSError as e:
+            raise KbError(f"cannot read body file: {e}")
+    else:
+        body = ""
+    note, status = retro.record(kb, a.until, csv(a.accepted), csv(a.rejected), body)
+    print(f"{note.id}\n{note.path}\n{status}")
+
+
 def build_parser():
     def common_opts(**kw):  # fresh actions each time: set_defaults would leak into shared ones
         c = argparse.ArgumentParser(add_help=False)
@@ -186,6 +203,20 @@ def build_parser():
     t = js.add_parser("tail", parents=[common], help="print the last N journal entries (newest last)")
     t.add_argument("--project")
     t.add_argument("-n", type=int, default=5)
+
+    s = add("retro", cmd_retro, "self-improvement loop: journal digest and retro log")
+    rs = s.add_subparsers(dest="rcmd", required=True)
+    g = rs.add_parser("gather", parents=[common],
+                      help="journal entries + friction since the last retro, and instruction files in scope")
+    g.add_argument("--since", metavar="ISO", help="override the start (default: newest retro note's until)")
+    g.add_argument("--project", help="only this project label (card id)")
+    r = rs.add_parser("record", parents=[common], help="write notes/retro-<date>.md and commit journal + note locally")
+    r.add_argument("--until", required=True, metavar="ISO", help="the gather timestamp: the next gather starts here")
+    r.add_argument("--accepted", help="comma separated")
+    r.add_argument("--rejected", help="comma separated")
+    bg = r.add_mutually_exclusive_group()
+    bg.add_argument("--body-file", metavar="F")
+    bg.add_argument("--body", help="- for stdin")
 
     s = add("hook", None, "session lifecycle hook handler (stdin = hook JSON; always exits 0)")
     s.add_argument("event", choices=hooks.EVENTS)

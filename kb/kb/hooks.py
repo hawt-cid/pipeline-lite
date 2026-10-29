@@ -114,27 +114,39 @@ def append_journal(kb_root, text, when=None):
         f.write(prefix + text.rstrip("\n") + "\n")
 
 
-def journal_entries(kb_root, project=None):
-    """All entries, oldest first, as (project, text). Standalone `- friction (` lines are entries."""
+def journal_records(kb_root):
+    """All entries, oldest first, as (ts, project, text); ts is 'YYYY-MM-DDTHH:MM' (minute
+    resolution). Standalone `- friction (` lines are entries of their own."""
     out = []
     d = journal_dir(kb_root)
     for p in sorted(d.glob("*.md")) if d.is_dir() else []:
-        cur = None
+        day, cur = p.stem, None
+
+        def flush():
+            if cur:
+                out.append((cur[0], cur[1], "\n".join(cur[2]).rstrip()))
+
         for line in p.read_text(encoding="utf-8", errors="replace").split("\n"):
             if line.startswith("## "):
-                if cur:
-                    out.append((cur[0], "\n".join(cur[1]).rstrip()))
+                flush()
                 parts = line[3:].split(" · ")
-                cur = (parts[1].strip() if len(parts) > 1 else "", [line])
+                m = re.match(r"(\d{4}-\d\d-\d\d) (\d\d:\d\d)", parts[0])
+                ts = f"{m.group(1)}T{m.group(2)}" if m else f"{day}T00:00"
+                cur = (ts, parts[1].strip() if len(parts) > 1 else "", [line])
             elif line.startswith("- friction ("):
-                if cur:
-                    out.append((cur[0], "\n".join(cur[1]).rstrip()))
-                m = re.match(r"- friction \([^,)]*, ([^)]*)\)", line)
-                cur = (m.group(1).strip() if m else "", [line])
+                flush()
+                m = re.match(r"- friction \((\d\d:\d\d)?[^,)]*, ([^)]*)\)", line)
+                cur = (f"{day}T{m.group(1) or '00:00'}" if m else f"{day}T00:00",
+                       m.group(2).strip() if m else "", [line])
             elif cur and line.strip():
-                cur[1].append(line)
-        if cur:
-            out.append((cur[0], "\n".join(cur[1]).rstrip()))
+                cur[2].append(line)
+        flush()
+    return out
+
+
+def journal_entries(kb_root, project=None):
+    """All entries, oldest first, as (project, text)."""
+    out = [(p, t) for _, p, t in journal_records(kb_root)]
     if project is not None:
         out = [e for e in out if e[0] == project]
     return out

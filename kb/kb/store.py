@@ -8,11 +8,12 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-TYPES = ("note", "project", "idea", "decision", "howto")
+TYPES = ("note", "project", "idea", "decision", "howto", "retro")
 STATUSES = ("active", "paused", "done")
 BASE_FIELDS = ("id", "type", "title", "project", "tags", "refs", "status", "created", "updated")
 PROJECT_FIELDS = ("path", "stack", "commands")
-LIST_FIELDS = ("tags", "refs", "commands")
+RETRO_FIELDS = ("until", "accepted", "rejected")  # type retro only
+LIST_FIELDS = ("tags", "refs", "commands", "accepted", "rejected")
 BLOCK_LISTS = ("commands",)  # written as `- item` lines; parsed either way
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 LINK_RE = re.compile(r"\[\[([^\[\]\n]+)\]\]")
@@ -134,7 +135,7 @@ def parse_frontmatter(text):
 
 
 def format_note(meta, body):
-    keys = [k for k in BASE_FIELDS + PROJECT_FIELDS if k in meta]
+    keys = [k for k in BASE_FIELDS + PROJECT_FIELDS + RETRO_FIELDS if k in meta]
     keys += [k for k in meta if k not in keys]
     out = ["---"]
     for k in keys:
