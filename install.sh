@@ -49,7 +49,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-for tool in claude git; do
+for tool in claude git python3; do
   command -v "$tool" >/dev/null 2>&1 || { echo "install.sh: required tool '$tool' not found in PATH" >&2; exit 1; }
 done
 
@@ -67,18 +67,47 @@ act() {
   fi
 }
 
-marketplace_registered() {
-  claude plugin marketplace list 2>/dev/null | grep -q "❯ ${MARKETPLACE}\$"
+# Prints the path of our registered marketplace; exit 1 if not registered.
+marketplace_path() {
+  claude plugin marketplace list --json 2>/dev/null | python3 -c '
+import json, sys
+for m in json.load(sys.stdin):
+    if m.get("name") == sys.argv[1]:
+        print(m.get("path") or m.get("installLocation") or "")
+        sys.exit(0)
+sys.exit(1)' "$MARKETPLACE"
 }
 
-plugin_installed() {
-  claude plugin list 2>/dev/null | grep -q "❯ ${PLUGIN}\$"
+# Prints "enabled" or "disabled" for our plugin; exit 1 if not installed.
+plugin_state() {
+  claude plugin list --json 2>/dev/null | python3 -c '
+import json, sys
+for p in json.load(sys.stdin):
+    if p.get("id") == sys.argv[1]:
+        print("enabled" if p.get("enabled") else "disabled")
+        sys.exit(0)
+sys.exit(1)' "$PLUGIN"
 }
 
-plugin_disabled() {
-  claude plugin list 2>/dev/null | awk -v id="❯ ${PLUGIN}" '
-    $0 ~ id"$" {found=1; next}
-    found && /Status:/ {print; exit}' | grep -q "disabled"
+# Sets MP_STATE to none|ours|other and MP_PATH to the registered path.
+check_marketplace() {
+  MP_PATH=""
+  if MP_PATH="$(marketplace_path)"; then
+    if [ "$(readlink -m "$MP_PATH")" = "$REPO" ]; then MP_STATE=ours; else MP_STATE=other; fi
+  else
+    MP_STATE=none
+  fi
+}
+
+warn_other_marketplace() {
+  cat >&2 <<MSG
+WARNING: marketplace '${MARKETPLACE}' is already registered from a different path:
+  registered: ${MP_PATH}
+  this repo:  ${REPO}
+Nothing was changed for the plugin or marketplace. To switch, run
+'./install.sh --uninstall' from the old checkout (${MP_PATH}),
+or 'claude plugin marketplace remove ${MARKETPLACE}', then re-run this installer.
+MSG
 }
 
 # True if $1 is a symlink whose target lies inside this repo.
@@ -112,22 +141,21 @@ HOOK
 
 do_install() {
   # 1. marketplace
-  if marketplace_registered; then
-    say "ok: marketplace ${MARKETPLACE} already registered"
-  else
-    act "register marketplace ${MARKETPLACE} (${REPO})" claude plugin marketplace add "$REPO"
-  fi
+  check_marketplace
+  case "$MP_STATE" in
+    other) warn_other_marketplace; exit 1 ;;
+    ours) say "ok: marketplace ${MARKETPLACE} already registered" ;;
+    none) act "register marketplace ${MARKETPLACE} (${REPO})" claude plugin marketplace add "$REPO" ;;
+  esac
 
-  # 2. plugin
-  if plugin_installed; then
-    if plugin_disabled; then
-      act "enable plugin ${PLUGIN}" claude plugin enable "$PLUGIN" --scope user
-    else
-      say "ok: plugin ${PLUGIN} already installed and enabled"
-    fi
-  else
-    act "install plugin ${PLUGIN} (user scope)" claude plugin install "$PLUGIN" --scope user
-  fi
+  # 2. plugin (the installed plugin is read live from plugin/, see README)
+  local state=""
+  state="$(plugin_state)" || state=""
+  case "$state" in
+    enabled) say "ok: plugin ${PLUGIN} already installed and enabled" ;;
+    disabled) act "enable plugin ${PLUGIN}" claude plugin enable "$PLUGIN" --scope user ;;
+    *) act "install plugin ${PLUGIN} (user scope)" claude plugin install "$PLUGIN" --scope user ;;
+  esac
 
   # 3. links
   if [ ! -d "$LINK_DIR" ]; then
@@ -165,16 +193,21 @@ do_install() {
 }
 
 do_uninstall() {
-  if plugin_installed; then
-    act "uninstall plugin ${PLUGIN}" claude plugin uninstall "$PLUGIN" --scope user
-  else
-    say "ok: plugin ${PLUGIN} not installed"
-  fi
-  if marketplace_registered; then
-    act "remove marketplace ${MARKETPLACE}" claude plugin marketplace remove "$MARKETPLACE"
-  else
-    say "ok: marketplace ${MARKETPLACE} not registered"
-  fi
+  check_marketplace
+  case "$MP_STATE" in
+    other)
+      warn_other_marketplace
+      say "skipped plugin and marketplace removal (registered from another path)" ;;
+    ours)
+      if plugin_state >/dev/null; then
+        act "uninstall plugin ${PLUGIN}" claude plugin uninstall "$PLUGIN" --scope user
+      else
+        say "ok: plugin ${PLUGIN} not installed"
+      fi
+      act "remove marketplace ${MARKETPLACE}" claude plugin marketplace remove "$MARKETPLACE" ;;
+    none)
+      say "ok: plugin ${PLUGIN} and marketplace ${MARKETPLACE} not registered" ;;
+  esac
 
   local src name target
   for src in "$REPO"/bin/*; do
@@ -191,6 +224,8 @@ do_uninstall() {
     say "Nothing to do: already uninstalled."
   elif [ "$DRY_RUN" -eq 1 ]; then
     say "Dry run: ${CHANGES} change(s) would be made."
+  else
+    say "Done: ${CHANGES} change(s) made."
   fi
 }
 

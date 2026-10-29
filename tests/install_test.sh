@@ -121,6 +121,29 @@ unset KB_DIR
 inst --kb "$HOME/custom-kb" >/dev/null 2>&1
 check "kb created at --kb path" test -d "$HOME/custom-kb/.git"
 
+echo "== marketplace registered from another checkout"
+new_env other
+mkdir -p "$ROOT/other/oldrepo"
+cp -R "$REPO/.claude-plugin" "$REPO/plugin" "$ROOT/other/oldrepo/"
+claude plugin marketplace add "$ROOT/other/oldrepo" >/dev/null 2>&1
+BEFORE="$(snapshot)"
+OUT="$(inst 2>&1)"; RC=$?
+[ "$RC" -ne 0 ] && ok "install exits non-zero on path mismatch" || fail "install exits non-zero on path mismatch"
+echo "$OUT" | grep -q "oldrepo" && echo "$OUT" | grep -q "$REPO" && ok "warning names both paths" || { fail "warning names both paths"; echo "$OUT"; }
+echo "$OUT" | grep -q "marketplace remove" && ok "warning says how to fix" || fail "warning says how to fix"
+check_not "no link created on mismatch" test -e "$HOME/.local/bin/kb"
+check_not "no kb created on mismatch" test -e "$KB_DIR"
+check_not "no plugin installed on mismatch" bash -c 'claude plugin list 2>/dev/null | grep -q "pipeline@"'
+[ "$BEFORE" = "$(snapshot)" ] && ok "mismatch run changed no files" || fail "mismatch run changed no files"
+OUT="$(inst --uninstall 2>&1)"
+check "uninstall from other checkout keeps foreign marketplace" bash -c 'claude plugin marketplace list | grep -q "agentic-pipeline-lite"'
+
+echo "== uninstall summary line"
+new_env summary
+inst >/dev/null 2>&1
+OUT="$(inst --uninstall 2>&1)"
+echo "$OUT" | grep -Eq "^Done: [0-9]+ change\(s\) made\." && ok "uninstall prints Done line" || { fail "uninstall prints Done line"; echo "$OUT"; }
+
 echo
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" -eq 0 ]

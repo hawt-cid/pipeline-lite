@@ -16,7 +16,7 @@ Requires `claude` and `git`.
 ./install.sh            # optional: --kb /path/to/kb, --dry-run to preview
 ```
 
-This registers the repo as the local marketplace `agentic-pipeline-lite`, installs and enables `pipeline@agentic-pipeline-lite` (user scope), symlinks `bin/*` into `~/.local/bin`, and creates the knowledge base at `${KB_DIR:-~/agent-kb}` from `kb-template/` if it does not exist. The kb is **local only**: no git remote and a `pre-push` hook that refuses every push. Existing files at link targets are moved to `<path>.bak.<timestamp>`; re-running changes nothing.
+This registers the repo as the local marketplace `agentic-pipeline-lite`, installs and enables `pipeline@agentic-pipeline-lite` (user scope), symlinks `bin/*` into `~/.local/bin`, and creates the knowledge base at `${KB_DIR:-~/agent-kb}` from `kb-template/` if it does not exist. The kb is **local only**: no git remote and a `pre-push` hook that refuses every push. Existing files at link targets are moved to `<path>.bak.<timestamp>`; re-running changes nothing. The plugin is read live from `plugin/` in this checkout (no cache refresh or reinstall needed): edits take effect at the next session start or `/reload-plugins`.
 
 ## Uninstall
 
