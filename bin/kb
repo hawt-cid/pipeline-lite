@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
-echo "kb: not implemented yet" >&2
-exit 1
+# Entrypoint for the kb CLI: resolves its real path (it is symlinked into
+# ~/.local/bin) and runs the stdlib-only Python package in kb/.
+here="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+PYTHONPATH="$here/../kb${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m kb "$@"
