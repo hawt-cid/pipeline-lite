@@ -16,6 +16,8 @@ Status: in use. A dogfood week on a real project is running; expect small change
 
 Requires `claude`, `git` and `python3` (stdlib only; `rg` is an optional search fallback).
 
+Quickest: paste [`INSTALL-PROMPT.md`](INSTALL-PROMPT.md) into Claude Code. It is self-contained (every file is embedded with a sha256 manifest), so nothing is cloned or downloaded; Claude writes the files to `~/pipeline-lite`, runs the installer and helps register your first projects. You can also install by hand:
+
 ```bash
 git clone https://github.com/hawt-cid/pipeline-lite ~/pipeline-lite
 cd ~/pipeline-lite && ./install.sh     # optional: --kb /path/to/kb, --dry-run to preview
@@ -84,6 +86,8 @@ python3 -m unittest discover -s tests
 bash tests/install_test.sh
 claude plugin validate plugin && claude plugin validate .
 ```
+
+`INSTALL-PROMPT.md` is generated: after changing any shipped file, run `scripts/build_install_prompt.py`. A test fails while it is stale.
 
 ## Uninstall
 
