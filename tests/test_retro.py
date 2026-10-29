@@ -1,6 +1,7 @@
 """Tests for `kb retro gather|record`. Temp kb, temp HOME, never the real ones."""
 import json
 import os
+import re
 import subprocess
 import sys
 import unittest
@@ -136,7 +137,7 @@ class GatherTest(RetroTest):
         self.ok("project", "add", "bare", "--path", str(self.tmp / "work" / "bare"))
         files = [self.home / ".claude" / "CLAUDE.md",
                  proj / "CLAUDE.md",
-                 self.home / ".claude" / "projects" / str(proj).replace("/", "-") / "memory" / "MEMORY.md",
+                 self.home / ".claude" / "projects" / re.sub(r"[^A-Za-z0-9]", "-", str(proj)) / "memory" / "MEMORY.md",
                  self.home / ".claude" / "skills" / "mine" / "SKILL.md"]
         for f in files:
             f.parent.mkdir(parents=True, exist_ok=True)
