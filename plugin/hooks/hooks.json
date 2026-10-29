@@ -3,7 +3,21 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/noop.sh\"" }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-kb.sh\" hook session-start" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-kb.sh\" hook stop" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-kb.sh\" hook session-end" }
         ]
       }
     ]

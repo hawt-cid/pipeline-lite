@@ -2,3 +2,6 @@
 *.sqlite
 *.db
 .index/
+
+# Local session state (never committed)
+.state/

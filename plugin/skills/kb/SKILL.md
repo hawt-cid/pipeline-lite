@@ -44,6 +44,24 @@ kb project add myapp --path ~/code/myapp --stack "python" --commands "make test"
 kb check                                             # validate; run after bulk edits
 ```
 
+## Session journal and friction
+
+Hooks track each session (start, turns, last reply) and append one entry to
+`<kb>/journal/YYYY-MM-DD.md` when it ends; SessionStart injects the project card, open task
+handoffs and recent journal entries. You do not write those entries.
+
+Log friction as it happens, one line, when the user corrects you or rejects your approach,
+a tool or command fails unexpectedly, or you hit a repeated papercut worth fixing later:
+
+```bash
+kb journal friction "tests need KB_DIR unset or they touch the real kb"
+kb journal tail --project proj-name -n 5     # recent entries, newest last
+```
+
+The note attaches to the live session (newest whose cwd equals, contains or is inside the
+current dir) and lands in its journal entry; with no live session it becomes a standalone line.
+The journal is local-only like the rest of the kb: it is never pushed or sent anywhere.
+
 ## Note format
 
 `notes/<id>.md`: frontmatter between `---` lines (`id, type, title, project, tags, refs, status,

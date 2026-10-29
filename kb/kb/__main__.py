@@ -4,6 +4,7 @@ import json
 import os
 import sys
 
+from . import hooks
 from .store import STATUSES, TYPES, Kb, KbError, find_kb, resolve_id, today
 
 
@@ -109,6 +110,14 @@ def cmd_project(kb, a):
     print(card.text(), end="")
 
 
+def cmd_journal(kb, a):
+    if a.jcmd == "friction":
+        print(hooks.add_friction(kb.root, " ".join(a.text), os.getcwd()))
+        return
+    for e in hooks.tail(kb.root, a.project, a.n):
+        print(e + "\n")
+
+
 def build_parser():
     def common_opts(**kw):  # fresh actions each time: set_defaults would leak into shared ones
         c = argparse.ArgumentParser(add_help=False)
@@ -168,11 +177,25 @@ def build_parser():
     ps.add_parser("list", parents=[common], help="list project cards")
     f = ps.add_parser("find", parents=[common], help="card for a directory (default: cwd); exit 1 if none")
     f.add_argument("--path")
+    s = add("journal", cmd_journal, "session journal (local only)")
+    js = s.add_subparsers(dest="jcmd", required=True)
+    f = js.add_parser("friction", parents=[common],
+                      help="log a friction note: attaches to the newest live session whose cwd equals, "
+                           "contains or is inside the current dir; else a standalone journal line")
+    f.add_argument("text", nargs="+")
+    t = js.add_parser("tail", parents=[common], help="print the last N journal entries (newest last)")
+    t.add_argument("--project")
+    t.add_argument("-n", type=int, default=5)
+
+    s = add("hook", None, "session lifecycle hook handler (stdin = hook JSON; always exits 0)")
+    s.add_argument("event", choices=hooks.EVENTS)
     return p
 
 
 def main(argv=None):
     a = build_parser().parse_args(argv)
+    if a.cmd == "hook":
+        return hooks.run(a.event, a.kb)
     try:
         if a.cmd == "project" and a.pcmd == "add" and a.status and a.status not in STATUSES:
             raise KbError(f"status must be one of: {', '.join(STATUSES)}")
