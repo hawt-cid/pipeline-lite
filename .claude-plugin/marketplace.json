@@ -1,0 +1,12 @@
+{
+  "name": "agentic-pipeline-lite",
+  "description": "Local marketplace for the agentic-pipeline-lite plugin.",
+  "owner": { "name": "Miroslav Frank" },
+  "plugins": [
+    {
+      "name": "pipeline",
+      "source": "./plugin",
+      "description": "Personal continuity, knowledge-base and retro skills for Claude Code."
+    }
+  ]
+}

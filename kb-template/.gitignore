@@ -1,0 +1,4 @@
+# Derived index files; rebuildable
+*.sqlite
+*.db
+.index/
